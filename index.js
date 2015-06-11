@@ -53,6 +53,42 @@ Basic.prototype.create = function (id, creds) {
     ];
 };
 
+// Updates the password
+// 'creds' must be supplied as:
+// '{ username: username, paswword: newPassword }'
+Basic.prototype.update = function (id, creds, cb) {
+    var self = this;
+    var err = this._checkCreds(creds);
+    if (err) return cb(err);
+
+    var key = this.prefix.concat(creds[this._key]);
+    this.db.get(key, function (err, row) {
+        if (err && err.type === 'NotFoundError') {
+            return 'Account not found for id:' + id;
+        }
+        if (err) return cb(err);
+        if (!row.salt) return cb('NOSALT: integrity error: no salt found');
+        if (!row.hash) return cb('NOHASH: integrity error: no hash found');
+
+        var salt = crypto.randomBytes(16);
+        var pw = Buffer(creds.password);
+
+        rows = [
+            {
+                type: 'put',
+                key: self.prefix.concat(creds[self._key]),
+                value: {
+                    id: id,
+                    hash: shasum(Buffer.concat([ salt, pw ])),
+                    salt: salt.toString('hex')
+                }
+            }
+        ];
+
+        cb(null, rows);
+    })
+}
+
 Basic.prototype._checkCreds = function (creds) {
     if (!creds || typeof creds !== 'object') {
         return new Error('supplied credentials are not an object');
