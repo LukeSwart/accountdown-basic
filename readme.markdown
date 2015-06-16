@@ -10,7 +10,7 @@ using salted hashes
 
 ## create an account
 
-``` js
+```js
 var accountdown = require('accountdown');
 var level = require('level');
 var db = level('/tmp/users.db');
@@ -64,12 +64,33 @@ $ node example/verify.js substack bleep
 verified: false
 ```
 
+## updating the password
+
+```
+var accountdown = require('accountdown');
+var level = require('level');
+var db = level('/tmp/users.db');
+
+var users = accountdown(db, {
+    login: { basic: require('accountdown-basic') }
+});
+
+var newCreds = {
+    login: { basic: { username: user, password: newPassword } }
+};
+
+users.update(user, newCreds, function (err) {
+    if (err) console.error(err)
+});
+```
+
+
 ## without accountdown
 
 Modules should be written to be useful on their own where possible.
 You can use this module without accountdown too:
 
-``` js
+```js
 var level = require('level');
 var db = level('/tmp/users.db', {
     keyEncoding: require('bytewise'),
@@ -87,9 +108,24 @@ var creds = { username: user, password: pass };
 batch(db, b.create(user, creds));
 ```
 
+and to change the account's password, continuing off the previous example:
+
+```
+var newPass = process.argv[4];
+
+var newCreds = { username: user, password: newPass };
+b.update(user, newCreds, function (err, updatedLoginRow) {
+    if (err) console.error(err)
+    batch(db, updatedLoginRow, function (err) {
+        if (err) console.error(err)
+    });
+}
+```
+
+
 # methods
 
-``` js
+```js
 var basic = require('accountdown-basic')
 ```
 
@@ -115,6 +151,13 @@ Verify `creds`, a username with `username` and `password` properties.
 
 `cb(err, success, id)` fires with any errors or a boolean `success` and the
 account identifier `id`.
+
+## b.update(id, creds, cb)
+
+Update `creds`, where `username` is an existing username and `password` is a new password for that username.
+
+`cb(err, rows)` fires with any errors, and an array `rows` containing a single row that can be fed into
+[level-create-batch](https://npmjs.org/package/level-create-batch) using the row's `put` type.
 
 # install
 
